@@ -3,9 +3,6 @@ package com.demo.aadharscanner;
 import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.os.AsyncTask;
@@ -16,8 +13,14 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
+
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+
 import com.gemalto.jp2.JP2Decoder;
 import com.google.android.gms.vision.barcode.Barcode;
+
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -35,6 +38,7 @@ public class MainActivity extends AppCompatActivity {
     private String scannedMobile, scannedEmail;
     public static final int REQUEST_CODE = 100;
     public static final int PERMISSION_REQUEST = 200;
+    private static int LAST_DIGIT_OF_UID=-1;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -44,8 +48,10 @@ public class MainActivity extends AppCompatActivity {
         secureQrCodePanel = (View)findViewById(R.id.secureQrCodePane);
         secureQrCodePanel.setVisibility(View.INVISIBLE);
 
-        if(ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED){
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CAMERA}, PERMISSION_REQUEST);
+        if(ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) !=
+                PackageManager.PERMISSION_GRANTED){
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CAMERA},
+                    PERMISSION_REQUEST);
         }
         scanbtn.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -83,7 +89,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void parseXML(String qrCodeResult) {
-        String warning = "Your aadhar QR code is very old and is not secure. You will see the result for 3 seconds only\n\n";
+        String warning = "Your aadhar QR code is very old and is not secure. " +
+                "You will see the resultfor 3 seconds only\n\n";
         result.setText(warning.concat(qrCodeResult));
         result.setTextColor(Color.RED);
         new CountDownTimer(3000,1000) {
@@ -103,8 +110,12 @@ public class MainActivity extends AppCompatActivity {
         Parse p = new Parse(qrCodeResult);
         Map<String,String> userAttributes = p.getAllAttributes();
 
+        //4th digit of ref id is last digit of UID. Will be used to verify mobile and email
+        LAST_DIGIT_OF_UID = Integer.parseInt(Objects.requireNonNull(
+                userAttributes.get("referenceid")).substring(3,4));
         //get status of mobile and email presence
-        int mobileEmailStatus = Integer.parseInt(Objects.requireNonNull(userAttributes.get("mobileEmailStatus")));
+        int mobileEmailStatus = Integer.parseInt(Objects.requireNonNull(
+                userAttributes.get("mobileEmailStatus")));
         boolean isMobilePresent = mobileEmailStatus==2 || mobileEmailStatus==3;
         boolean isEmailPresent = mobileEmailStatus==1 || mobileEmailStatus==3;
 
@@ -183,9 +194,9 @@ public class MainActivity extends AppCompatActivity {
         if(inputMobile.length() != 10)
             mobileInput.setError("Invalid mobile no.");
         boolean mobileMatched = false;
-        try {
-            mobileMatched = byteToHex(getSHA(inputMobile)).equals(scannedMobile);
 
+        try {
+            mobileMatched = hashNTimes(inputMobile, LAST_DIGIT_OF_UID).equals(scannedMobile);
         }
         catch (NoSuchAlgorithmException e){
             e.printStackTrace();
@@ -206,7 +217,7 @@ public class MainActivity extends AppCompatActivity {
             emailInput.setError("Invalid Email id");
         boolean emailMatched = false;
         try {
-            emailMatched = byteToHex(getSHA(inputEmail)).equals(scannedEmail);
+           emailMatched = hashNTimes(inputEmail, LAST_DIGIT_OF_UID).equals(scannedEmail);
 
         }
         catch (NoSuchAlgorithmException e){
@@ -237,6 +248,19 @@ public class MainActivity extends AppCompatActivity {
             hexChars[j * 2 + 1] = HEX_ALPHABET[v & 0x0f];
         }
         return new String(hexChars);
+    }
+
+    private String hashNTimes(String input, int n) throws NoSuchAlgorithmException {
+        String hashedString ="";
+        if(n == 0 || n == 1) {
+            hashedString = byteToHex(getSHA(input));
+        }
+        else{
+            while (n-- > 0){
+                hashedString = byteToHex(getSHA(input));
+            }
+        }
+        return hashedString;
     }
 
     private static class DecodeJP2ImageAsyncTask extends AsyncTask<Void, Void, Bitmap> {
