@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">AadharScanner</string>
+    <string name="name">Name</string>
+    <string name="gender">Gender</string>
+    <string name="dob">DoB</string>
+    <string name="address">Address</string>
+    <string name="enter_your_email_id">Enter your Email id</string>
+    <string name="userimage">userImage</string>
+    <string name="enter_your_mobile_no_10_digits">Enter your Mobile no. (10 digits)</string>
+    <string name="verify">Verify</string>
+    <string name="isverified">isVerified</string>
+    <string name="infosecureqrcode">Information decoded from secure QR code.</string>
+    <string name="noMobile">Mobile number is not registered</string>
+    <string name="noEmail">Email id is not registered</string>
+    <string name="scan_aadhar_qr">Scan Aadhar QR</string>
+</resources>
